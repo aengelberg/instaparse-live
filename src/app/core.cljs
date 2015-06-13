@@ -17,7 +17,7 @@
 
 (enable-console-print!)
 
-(defonce editor-content (r/atom "
+(defonce grammar (r/atom "
 <S> = (sexp | whitespace)+
 sexp = <'('> operation <')'>
 
@@ -26,7 +26,8 @@ operator = #'[+*-\\\\]'
 args = (num | <whitespace> | sexp)+
 <num> = #'[0-9]+'
 <whitespace> = #'\\s+'"))
-(defonce sample-code (r/atom "(+ 1 (- 3 1))"))
+
+(defonce sample (r/atom "(+ 1 (- 3 1))"))
 
 (defonce parse-output (r/atom ""))
 
@@ -53,12 +54,12 @@ args = (num | <whitespace> | sexp)+
                                     {:style {:marginBottom 10 :textAlign "center"}}
                                     "Build a parser in your browser! This page runs the " [:a {:href "https://github.com/lbradstreet/instaparse-cljs"} "ClojureScript port"]
                                     " of " [:a {:href "https://github.com/Engelberg/instaparse"} "Instaparse"] "."]
-                                   [util/cm-editor sample-code {:theme "solarized light"}]]]
+                                   [util/cm-editor sample {:theme "solarized light"}]]]
               :panel-2 [parsed-output]
      ]
     :panel-2 [v-box
               :size "1"
-              :children [[util/cm-editor editor-content]]]
+              :children [[util/cm-editor grammar]]]
     ])
 
 (defservantfn worker-parse
@@ -70,29 +71,29 @@ args = (num | <whitespace> | sexp)+
 (defn init []
   (r/render-component [app] (.getElementById js/document "app"))
   (def servant-channel (servant/spawn-servants 2 "js/compiled/app.js"))
-  (go-loop [grammar nil
-            input nil
+  (go-loop [grammar1 nil
+            sample1 nil
             wait? false]
     (when wait?
       (<! updated-text))
-    (let [grammar2 @editor-content
-          input2 @sample-code]
-      (if (and (= grammar grammar2)
-               (= input input2))
-        (recur grammar input true)
+    (let [grammar2 @grammar
+          sample2 @sample]
+      (if (and (= grammar1 grammar2)
+               (= sample1 sample2))
+        (recur grammar1 sample1 true)
         (do (let [parse-result (servant/servant-thread servant-channel
                                                        servant/standard-message
                                                        worker-parse
-                                                       @editor-content
-                                                       @sample-code)]
+                                                       grammar2
+                                                       sample2)]
               (prn "Ready to receive parse result")
               (let [result (<! parse-result)
                     _ (prn "Got parse result!" result)
                     edn-parsed (read-string result)]
                 (prn "Parsed edn:" edn-parsed)
                 (reset! parse-output edn-parsed)))
-            (recur grammar2 input2 true)))))
-  (doseq [a [editor-content sample-code]]
+            (recur grammar2 sample2 true)))))
+  (doseq [a [grammar sample]]
     (add-watch a ::listener
                (fn [k a old new]
                  (prn "Updated!" k a old new)
