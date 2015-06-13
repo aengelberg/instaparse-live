@@ -69,7 +69,7 @@ args = (num | <whitespace> | sexp)+
 
 (defn init []
   (r/render-component [app] (.getElementById js/document "app"))
-  (def servant-channel (servant/spawn-servants 2 "js/compiled/worker.js"))
+  (def servant-channel (servant/spawn-servants 2 "js/compiled/app.js"))
   (go-loop [grammar nil
             input nil
             wait? false]
