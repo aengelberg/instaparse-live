@@ -33,11 +33,11 @@
                          :output-to "resources/public/js/compiled/app.js"
                          :output-dir "resources/public/js/compiled/out"
                          :source-map-timestamp true }}
-             {:id "app"
+             {:id "min"
               :source-paths ["src"]
               :compiler {:output-to "resources/public/js/compiled/app.js"
                          :main app.core
-                         :optimizations :whitespace
+                         :optimizations :advanced
                          :pretty-print false
                          }}]}
 
