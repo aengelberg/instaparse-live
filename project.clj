@@ -34,18 +34,12 @@
                          :output-dir "resources/public/js/compiled/out"
                          :source-map-timestamp true }}
              {:id "app"
-              :source-paths ["src" "app_only"]
+              :source-paths ["src"]
               :compiler {:output-to "resources/public/js/compiled/app.js"
                          :main app.core
                          :optimizations :whitespace
                          :pretty-print false
-                         }}
-             {:id "worker"
-              :source-paths ["src"]
-              :compiler {:output-to "resources/public/js/compiled/worker.js"
-                         :main app.core
-                         :optimizations :whitespace
-                         :pretty-print false}}]}
+                         }}]}
 
   :figwheel {
              ;; :http-server-root "public" ;; default and assumes "resources" 
