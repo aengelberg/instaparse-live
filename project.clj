@@ -13,6 +13,7 @@
                  [cljsjs/codemirror "5.1.0-2"]
                  [reagent "0.5.0"]
                  [re-com "0.5.4"]
+                 [servant "0.1.3"]
                  ]
 
   :plugins [[lein-cljsbuild "1.0.5"]
@@ -27,20 +28,24 @@
               :source-paths ["src"]
 
               :figwheel { :on-jsload "app.core/on-js-reload" }
-
               :compiler {:main app.core
                          :asset-path "js/compiled/out"
                          :output-to "resources/public/js/compiled/app.js"
                          :output-dir "resources/public/js/compiled/out"
                          :source-map-timestamp true }}
-             {:id "min"
-              :source-paths ["src"]
+             {:id "app"
+              :source-paths ["src" "app_only"]
               :compiler {:output-to "resources/public/js/compiled/app.js"
                          :main app.core
-                         :optimizations :advanced
+                         :optimizations :whitespace
                          :pretty-print false
-                         :externs ["resources/private/js/codemirror-externs.js"]
-                         }}]}
+                         }}
+             {:id "worker"
+              :source-paths ["src"]
+              :compiler {:output-to "resources/public/js/compiled/worker.js"
+                         :main app.core
+                         :optimizations :whitespace
+                         :pretty-print false}}]}
 
   :figwheel {
              ;; :http-server-root "public" ;; default and assumes "resources" 

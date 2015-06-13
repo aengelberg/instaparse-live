@@ -1,13 +1,19 @@
 (ns ^:figwheel-always app.core
     (:require
-        [cljsjs.codemirror]
-        [app.util :as util]
+        [app.util :as util] 
         [reagent.core :as r]
         #_[secretary.core :as secretary :refer-macros [defroute]]
         #_[pushy.core :as pushy]
         [re-com.core   :refer [h-box v-box box gap line scroller border h-split v-split title flex-child-style p]]
         [re-com.splits :refer [hv-split-args-desc]]
-        ))
+        [servant.core :as servant]
+        [servant.worker :as worker]
+        [cljs.core.async :as a :refer [<! >!]]
+        [cljs.reader :refer [read-string]]
+        )
+    (:require-macros
+     [servant.macros :refer [defservantfn]]
+     [cljs.core.async.macros :refer [go go-loop]]))
 
 (enable-console-print!)
 
@@ -22,11 +28,15 @@ args = (num | <whitespace> | sexp)+
 <whitespace> = #'\\s+'"))
 (defonce sample-code (r/atom "(+ 1 (- 3 1))"))
 
+(defonce parse-output (r/atom ""))
+
+(defonce updated-text (a/chan))
+
 (defn parsed-output []
   [:div
    {:id "parsed-output"
     :style {:overflow-y "auto"}}
-   (util/parse @editor-content @sample-code)])
+   @parse-output])
 
  (defn app []
    [h-split
@@ -51,20 +61,50 @@ args = (num | <whitespace> | sexp)+
               :children [[util/cm-editor editor-content]]]
     ])
 
-(defn init []
-  (r/render-component [app] (.getElementById js/document "app")))
-(init)
-#_(defroute "/" []
-          (init))
+(defservantfn worker-parse
+  [grammar input]
+  (let [result (pr-str (util/parse grammar input))]
+    (prn "Sending back result:" result)
+    result))
 
-#_(secretary/set-config! :prefix "/")
-#_(def history (pushy/pushy secretary/dispatch!
-                          (fn [x]
-                            (when (secretary/locate-route x) x))))
-#_(pushy/start! history)
+(defn init []
+  (r/render-component [app] (.getElementById js/document "app"))
+  (def servant-channel (servant/spawn-servants 2 "js/compiled/worker.js"))
+  (go-loop [grammar nil
+            input nil
+            wait? false]
+    (when wait?
+      (<! updated-text))
+    (let [grammar2 @editor-content
+          input2 @sample-code]
+      (if (and (= grammar grammar2)
+               (= input input2))
+        (recur grammar input true)
+        (do (let [parse-result (servant/servant-thread servant-channel
+                                                       servant/standard-message
+                                                       worker-parse
+                                                       @editor-content
+                                                       @sample-code)]
+              (prn "Ready to receive parse result")
+              (let [result (<! parse-result)
+                    _ (prn "Got parse result!" result)
+                    edn-parsed (read-string result)]
+                (prn "Parsed edn:" edn-parsed)
+                (reset! parse-output edn-parsed)))
+            (recur grammar2 input2 true)))))
+  (doseq [a [editor-content sample-code]]
+    (add-watch a ::listener
+               (fn [k a old new]
+                 (prn "Updated!" k a old new)
+                 (go (>! updated-text true))))))
+
+(if (servant/webworker?)
+  (worker/bootstrap)
+  (init))
 
  (defn on-js-reload []
-    ;; optionally touch your app-state to force rerendering depending on
+    ;; optionally touch your app-state to force rerendering depending on 
     ;; your application
     ;; (swap! app-state update-in [:__figwheel_counter] inc)
     )
+ 

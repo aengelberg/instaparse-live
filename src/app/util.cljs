@@ -25,7 +25,7 @@
           (error-message (pr-str result)))
         (let [result (postwalk
                        (fn [x]
-                         (prn x)
+                         ;(prn x)
                          (if (vector? x) [:div {:class (str "parse-tag " (name (first x)))}
                                           [:span {:class "tag-name"} (str (first x) " ")] (rest x) ]
                                          x))
